@@ -134,12 +134,13 @@ __global__ void double_filter_kernel(double *gray_data, double *result, int widt
 
 
 int main(int argc, char *argv[]) {  
-    if(argc <= 2) {
+    if(argc <= 3) {
         printf("参数不足\n");
         return 0;
     }
     int *img1_data, img1_width, img1_height, *img2_data, img2_width, img2_height, *img1_ext, *img2_ext;
     double *diff_img, *ext_diff_img;
+    int filter_times;
     rgb2gray(argv[1], &img1_data, &img1_width, &img1_height);
     rgb2gray(argv[2], &img2_data, &img2_width, &img2_height);
     cudaMalloc((void **)&img1_ext, sizeof(int) * (img1_width + 6) * (img1_height + 6));
@@ -153,12 +154,16 @@ int main(int argc, char *argv[]) {
     cudaFree(img2_data);
     cudaFree(img1_data);
     cudaThreadSynchronize();
-    extdouble_kernel<<<128, 512>>>(ext_diff_img, diff_img, img1_width, img1_height, DOUBLE_FILTER_N);
-    cudaThreadSynchronize();
-    double_filter_kernel<<<128, 512>>>(ext_diff_img, diff_img, img1_width, img1_height);
+    filter_times = atoi(argv[3]);
+    for(int loop = 0; loop < filter_times; ++loop) {
+        extdouble_kernel<<<128, 512>>>(ext_diff_img, diff_img, img1_width, img1_height, DOUBLE_FILTER_N);
+        cudaThreadSynchronize();
+        double_filter_kernel<<<128, 512>>>(ext_diff_img, diff_img, img1_width, img1_height);
+        cudaThreadSynchronize();
+    }
+    
     cudaFree(img1_ext);
     cudaFree(img2_ext);
-    cudaThreadSynchronize();
     cudaFree(ext_diff_img);
     // cudaFree(diff_img);
     double *final_data = (double *)malloc(sizeof(double) * img1_height * img1_width);
@@ -199,17 +204,31 @@ int main(int argc, char *argv[]) {
         center[1] = center_sum2[1]/center_sum[1];
         sdist = abs(sdist - center[0] - center[1]);
         fprintf(stderr, "%lf\n", fabs(sdist - sdist2));
-    } while(fabs(sdist - sdist2) > 0.001);
+    } while(fabs(sdist - sdist2) > 0.00001);
     
     for(int loop = 0; loop < img1_height * img1_width; ++loop) {
         result[loop] = distence[loop * 2] > distence[loop * 2 + 1]? 1: 0;
     }
 
-    for(int loop_h = 0; loop_h < img1_height; ++loop_h) {
-        for(int loop_w = 0; loop_w < img1_width; ++loop_w) {
-            printf((loop_w == (img1_width - 1))?"%d":"%d,", result[loop_h * img1_width + loop_w]);
-        }
-        printf("\n");
-    }
+	bmp_img img;
+	bmp_img_init_df (&img, img1_width, img1_height);
+	char filename[20];
+    sprintf(filename, "diff_%d.bmp", filter_times);
+	// Draw a checkerboard pattern:
+	for (int y = 0; y < img1_height; y++)
+	{
+		for (int x = 0; x < img1_width; x++)
+		{
+			if (result[y * img1_width + x]) {
+				bmp_pixel_init (&img.img_pixels[y][x], 255, 255, 255);
+			} else {
+				bmp_pixel_init (&img.img_pixels[y][x], 0, 0, 0);
+			}
+		}
+	}
+	free(result);
+    free(distence);
+	bmp_img_write (&img, filename);
+	bmp_img_free (&img);
     return 0;
 }

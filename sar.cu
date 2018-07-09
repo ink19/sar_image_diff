@@ -9,6 +9,7 @@
 #define B_R_2 (0.01)
 #define DOUBLE_FILTER_N (10)
 
+//rgb灰度化
 __global__ void rgb2gray_kernel(int *gray_data, int *rgb_data, int size) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     while (tid < size) {
@@ -16,6 +17,7 @@ __global__ void rgb2gray_kernel(int *gray_data, int *rgb_data, int size) {
         tid += blockDim.x * gridDim.x;
     }
 }
+//扩展图像
 __global__ void extimg_kernel(int *ext_data, int *data, int width, int heigth, int ext_length) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     int ext_heigth = (heigth + ext_length * 2), ext_width = (width + ext_length * 2);
@@ -34,6 +36,7 @@ __global__ void extimg_kernel(int *ext_data, int *data, int width, int heigth, i
     }
 }
 
+//差异图
 __global__ void diffimg_kernel(double *dst_data, int *src1_data, int *src2_data, int width, int height, int r) {
     int min_sum, max_sum;
     int index = threadIdx.x + blockIdx.x * blockDim.x, size = width * height;
@@ -54,6 +57,7 @@ __global__ void diffimg_kernel(double *dst_data, int *src1_data, int *src2_data,
     }
 }
 
+//扩展浮点型
 __global__ void extdouble_kernel(double *ext_data, double *data, int width, int heigth, int ext_length) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     int ext_heigth = (heigth + ext_length * 2), ext_width = (width + ext_length * 2);
@@ -72,6 +76,7 @@ __global__ void extdouble_kernel(double *ext_data, double *data, int width, int 
     }
 }
 
+//读取图像
 int rgb2gray(const char *filename, int **dev_data, int *out_width, int *out_height) {
     bmp_img bmp_info;
     int length;
